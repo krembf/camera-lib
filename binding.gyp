@@ -34,12 +34,11 @@
             "libraries": [
                 '-Wl,-rpath,/home/home-dev/Documents/dev/bluedragon/camera-lib/build/out/Default/obj.target',
                 '-L/home/home-dev/Documents/dev/bluedragon/camera-lib/build/out/Default/obj.target',
-                '-lcamera',
+                '-lcamera', # full name is libcamera.so, linker knows how to translate
                 '<!@(/opt/pylon5/bin/pylon-config --libs-rpath)',
                 '<!@(/opt/pylon5/bin/pylon-config --libs)',
             ],
-            'sources': [
-                'camera.hpp',                
+            'sources': [            
                 'cameraapp.cpp'
             ]
         }
