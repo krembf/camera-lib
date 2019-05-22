@@ -1,2 +1,2 @@
 # camera-lib
-Shared library for camera control
+Shared library and test applications for camera control
