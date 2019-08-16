@@ -1,5 +1,7 @@
 # Camera test app
 
+Uses libcamera.so as dynamic library
+
 *Build instructions:*
 
 **Generate build folder with makefile:**
@@ -23,5 +25,6 @@ rm build -rf
 
 **Run application:**
 ```sh
- ./build/out/Default/cameraapp
+cd build
+./out/Default/cameraapp
 ```

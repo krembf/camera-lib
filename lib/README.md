@@ -20,3 +20,6 @@ make libcamera
 cd lib
 rm build -rf
 ```
+
+**Image Format Converter using Pylon SDK**
+https://stackoverflow.com/questions/24101877/basler-pylon-4-sdk-and-opencv-2-4-9-cpylonimage-to-mat

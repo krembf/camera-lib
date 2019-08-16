@@ -26,6 +26,7 @@ static void PrintImageProperties(IImage &image)
 		<< " Width: " << image.GetWidth()
 		<< " Height: " << image.GetHeight()
 		<< " Unique: " << image.IsUnique()
+		<< " PixelType: " << image.GetPixelType()
 		<< endl;
 }
 
@@ -42,12 +43,19 @@ void Camera::Init()
 	log("pylon initialized");
 }
 
+void Camera::DeInit()
+{
+	// Releases all pylon resources.
+	PylonTerminate();
+	log("pylon terminated");
+}
+
 std::string Camera::getName()
 {
 	return "Basler";
 }
 
-void Camera::Snap()
+void Camera::Snap(uint8_t *buffer)
 {
 	// This smart pointer will receive the grab result data.
 	CGrabResultPtr ptrGrabResult;
@@ -69,12 +77,15 @@ void Camera::Snap()
 	{
 		// Create a pylon image.
 		CPylonImage image;
+		CPylonImage userImage;
+		// todo: get the parameters as function arguments
+		userImage.AttachUserBuffer(buffer, 576000, Pylon::EPixelType::PixelType_Mono8, 960, 600, 0);
 
 		// A pylon grab result class CGrabResultPtr provides a cast operator to IImage.
 		// That's why it can be used like an image, e.g. to print its properties or
 		// to show it on the screen.
 		std::cout << endl
-			 << "The properties of the grabbed image." << endl;
+				  << "The properties of the grabbed image." << endl;
 		PrintImageProperties(ptrGrabResult);
 
 		// Initializes the image object with the buffer from the grab result.
@@ -84,13 +95,8 @@ void Camera::Snap()
 		// camera object has been destroyed already.
 		image.AttachGrabResultBuffer(ptrGrabResult);
 		std::cout << endl
-			 << "The properties of an image with an attached grab result." << endl;
+				  << "The properties of an image with an attached grab result." << endl;
 		PrintImageProperties(image);
-
-		// Get the grab result image properties for later use.
-		EPixelType pixelType = ptrGrabResult->GetPixelType();
-		uint32_t width = ptrGrabResult->GetWidth();
-		uint32_t height = ptrGrabResult->GetHeight();
 
 		// Now the grab result can be released. The grab result buffer is now
 		// only held by the pylon image.
@@ -98,11 +104,15 @@ void Camera::Snap()
 		std::cout << "After the grab result has been released." << endl;
 		PrintImageProperties(image);
 
-		// If a grab result is referenced then always a new buffer is allocated on reset.
-		image.Reset(pixelType, width / 2, height);
-		std::cout << endl
-			 << "After resetting the image properties while a grab result is referenced. A new Buffer is allocated." << endl;
-		PrintImageProperties(image);
+		uint8_t *pImageBuffer = (uint8_t *)image.GetBuffer();
+		cout << "Gray value of first pixel: " << (uint32_t)pImageBuffer[0] << endl
+			 << endl;
+
+		// Copy the image from the grabbed into user one
+		userImage.CopyImage(image);
+		cout << "Returning image buffer" << endl;
+
+		return;
 	}
 }
 

@@ -9,7 +9,8 @@ private:
 public:
 	Camera(/* args */);
 	void Init();
-	void Snap();
+	void DeInit();
+	void Snap(uint8_t *);
 	std::string getName();
 	~Camera();
 };
