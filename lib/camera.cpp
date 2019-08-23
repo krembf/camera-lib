@@ -55,10 +55,15 @@ std::string Camera::getName()
 	return "Basler";
 }
 
-void Camera::Snap(uint8_t *buffer)
+void Camera::Snap(uint8_t *buffer, uint32_t bufferSize)
 {
 	// This smart pointer will receive the grab result data.
 	CGrabResultPtr ptrGrabResult;
+
+	const auto width = 960;
+	const auto height = 600;
+	const auto byteDepth = 4; //RGBA
+  	const auto expectedBufferSize = width * height * byteDepth;
 
 	try
 	{
@@ -73,13 +78,25 @@ void Camera::Snap(uint8_t *buffer)
 		log(e.GetDescription());
 	}
 
+	// validate image buffer size against camera image dimensions and byteDepth;
+	if(bufferSize != expectedBufferSize)
+	{
+		cerr << "Could not grab an image: Invalid buffer size supplied " << buffer << " " << expectedBufferSize << endl;
+		log("Exception occured");
+		return;
+	}
+
 	if (ptrGrabResult && ptrGrabResult->GrabSucceeded())
 	{
 		// Create a pylon image.
 		CPylonImage image;
 		CPylonImage userImage;
 		// todo: get the parameters as function arguments
-		userImage.AttachUserBuffer(buffer, 576000, Pylon::EPixelType::PixelType_Mono8, 960, 600, 0);
+		userImage.AttachUserBuffer(buffer, bufferSize, Pylon::EPixelType::PixelType_BGRA8packed, width, height, 0);
+		Pylon::CImageFormatConverter converter;
+		converter.OutputPixelFormat = PixelType_BGRA8packed;
+		converter.OutputBitAlignment = OutputBitAlignment_MsbAligned;
+		cout << "Converter created ...";
 
 		// A pylon grab result class CGrabResultPtr provides a cast operator to IImage.
 		// That's why it can be used like an image, e.g. to print its properties or
@@ -109,8 +126,10 @@ void Camera::Snap(uint8_t *buffer)
 			 << endl;
 
 		// Copy the image from the grabbed into user one
-		userImage.CopyImage(image);
-		cout << "Returning image buffer" << endl;
+		converter.Convert(userImage, image);
+
+		// for debug only at this point
+		// userImage.Save(EImageFileFormat::ImageFileFormat_Png, "/tmp/mypng.png");
 
 		return;
 	}
