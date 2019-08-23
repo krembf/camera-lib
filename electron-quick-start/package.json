@@ -18,10 +18,12 @@
   "license": "CC0-1.0",
   "devDependencies": {
     "electron": "^5.0.0",
+    "electron-rebuild": "^1.8.5",
     "node-gyp": "^4.0.0"
   },
   "dependencies": {
     "bindings": "^1.5.0",
-    "node-addon-api": "^1.6.3"
+    "node-addon-api": "^1.6.3",
+    "serialport": "^7.1.5"
   }
 }
