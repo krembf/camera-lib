@@ -1,0 +1,1 @@
+No device is available or no device contains the provided device info properties.
