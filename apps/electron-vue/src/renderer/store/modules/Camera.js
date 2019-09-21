@@ -8,7 +8,22 @@ var snap = function () {
   return addon.Snap()
 }
 
+var snapAsync = function (buffer, cb) {
+  return addon.snapAsync(buffer, cb)
+}
+
+var snapEmit = function (buffer, emitter) {
+  addon.snapEmit(buffer, emitter)
+}
+
+var snapEmitThread = async function (buffer, emitter) {
+  await addon.snapEmitThread(buffer, emitter)
+}
+
 export default {
   getCameraName,
-  snap
+  snap,
+  snapAsync,
+  snapEmit,
+  snapEmitThread
 }
