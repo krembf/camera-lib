@@ -59,11 +59,10 @@ class SnapAsyncWorker : public Napi::AsyncWorker
 public:
   SnapAsyncWorker(
       Napi::Buffer<uint8_t> &data,
-      const Napi::Function &callback,
-      Napi::Env _env) : Napi::AsyncWorker(callback),
-                        env(_env),
-                        dataRef(Napi::ObjectReference::New(data, 1)),
-                        dataPtr(data.Data())                        
+      const Napi::Function &callback)
+      : Napi::AsyncWorker(callback),
+        dataRef(Napi::ObjectReference::New(data, 1)),
+        dataPtr(data.Data())
   {
   }
 
@@ -113,7 +112,6 @@ protected:
   }
 
 private:
-  Napi::Env env;
   Napi::ObjectReference dataRef;
   uint8_t *dataPtr;
 };
@@ -148,7 +146,7 @@ void MethodSnapAsync(const Napi::CallbackInfo &info)
 
   for(auto i = 0; i < 200; i++)
   {
-    (new SnapAsyncWorker(buffer, cb, env))->Queue();
+    (new SnapAsyncWorker(buffer, cb))->Queue();
   }
 
   return;
