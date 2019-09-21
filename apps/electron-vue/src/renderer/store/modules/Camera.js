@@ -9,7 +9,7 @@ var snap = function () {
 }
 
 var snapAsync = function (buffer, cb) {
-  return addon.snapAsync(buffer, cb)
+  return addon.snapAsync(buffer, cb, 200)
 }
 
 export default {

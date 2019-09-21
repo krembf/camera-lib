@@ -125,7 +125,7 @@ void MethodSnapAsync(const Napi::CallbackInfo &info)
   // Account for known potential issues that MUST be handled by
   // synchronously throwing an `Error`
   //
-  if (info.Length() != 2)
+  if (info.Length() != 3)
   {
     Napi::TypeError::New(env, "Invalid argument count").ThrowAsJavaScriptException();
     return;
@@ -143,8 +143,9 @@ void MethodSnapAsync(const Napi::CallbackInfo &info)
 
   Napi::Buffer<uint8_t> buffer = info[0].As<Napi::Buffer<uint8_t>>();
   Napi::Function cb = info[1].As<Napi::Function>();
+  int numberOfSnaps = info[2].As<Napi::Number>();
 
-  for(auto i = 0; i < 200; i++)
+  for(auto i = 0; i < numberOfSnaps; i++)
   {
     (new SnapAsyncWorker(buffer, cb))->Queue();
   }
