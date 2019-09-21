@@ -36,7 +36,6 @@
 <script>
 import SystemInformation from './LandingPage/SystemInformation'
 import Camera from '../store/modules/Camera'
-const EventEmitter = require('events').EventEmitter
 
 export default {
   name: 'landing-page',
@@ -66,13 +65,6 @@ export default {
         console.log('### Got new buffer')
         var canvas = document.querySelector('canvas')
         var ctx = canvas.getContext('2d')
-        // var imgData = ctx.createImageData(960, 600)
-        // let j = 0
-        // buffer.forEach(element => {
-        //   imgData.data[j] = element
-        //   j++
-        // })
-        // ctx.putImageData(imgData, 0, 0)
 
         // buffer canvas
         let canvas2 = document.createElement('canvas')
@@ -93,38 +85,6 @@ export default {
         // render the buffered canvas onto the original canvas element
         ctx.drawImage(canvas2, 0, 0)
       })
-    },
-    async snapEmit () {
-      let buffer = new Uint8Array(2304000)
-      const emitter = new EventEmitter()
-
-      emitter.on('start', () => {
-        console.log('### Sensor reading started ...')
-      })
-
-      emitter.on('buffer', function () {
-        console.log('### Got new buffer')
-        let canvas = document.querySelector('canvas')
-        let ctx = canvas.getContext('2d')
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.beginPath()
-        var imgData = ctx.createImageData(960, 600)
-        let j = 0
-        var start = Date.now()
-        buffer.forEach(element => {
-          imgData.data[j] = element
-          j++
-        })
-        ctx.putImageData(imgData, 0, 0)
-        ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height)
-        console.log(`Copy took ${Date.now() - start} millis`)
-      })
-
-      emitter.on('end', function () {
-        console.log('### Sensor reading Ended')
-      })
-
-      await Camera.snapEmitThread(buffer, emitter.emit.bind(emitter))
     }
   }
 }
