@@ -76,6 +76,7 @@ void Camera::Snap(uint8_t *buffer, uint32_t bufferSize)
 			 << e.GetDescription() << endl;
 		log("Exception occured");
 		log(e.GetDescription());
+		return;
 	}
 
 	// validate image buffer size against camera image dimensions and byteDepth;
