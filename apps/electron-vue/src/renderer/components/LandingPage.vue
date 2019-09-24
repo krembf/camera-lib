@@ -60,7 +60,10 @@ export default {
       ctx.putImageData(imgData, 0, 0)
     },
     snapAsync () {
-      let buffer = new Uint8Array(2304000)
+      let bufferSize = 2304000
+      let numberOfBuffers = 4
+      let buffer = new Uint8Array(bufferSize * numberOfBuffers)
+      let bufferIndex = 0
       Camera.snapAsync(buffer, function () {
         console.log('### Got new buffer')
         var canvas = document.querySelector('canvas')
@@ -76,7 +79,7 @@ export default {
         let imgData = context2.createImageData(960, 600)
         let j = 0
         var start = Date.now()
-        buffer.forEach(element => {
+        buffer.subarray(bufferIndex * bufferSize, bufferIndex * bufferSize + bufferSize).forEach(element => {
           imgData.data[j] = element
           j++
         })
@@ -84,6 +87,7 @@ export default {
         context2.putImageData(imgData, 0, 0)
         // render the buffered canvas onto the original canvas element
         ctx.drawImage(canvas2, 0, 0)
+        bufferIndex = (bufferIndex + 1) % numberOfBuffers
       })
     }
   }

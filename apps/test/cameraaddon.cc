@@ -4,6 +4,7 @@
 #include <vector>
 #include <sstream>
 #include <thread>
+#include "napi-thread-safe-callback.hpp"
 
 // Namespace for using cout.
 using namespace std;
@@ -61,19 +62,24 @@ class SnapAsyncWorker : public Napi::AsyncWorker
 public:
   SnapAsyncWorker(
       Napi::Buffer<uint8_t> &data,
-      const Napi::Function &callback,
-      Napi::Env _env) : Napi::AsyncWorker(callback),
-                        dataRef(Napi::ObjectReference::New(data, 1)),
-                        dataPtr(data.Data()),
-                        dataLength(data.Length()),
-                        env(_env)
+      const Napi::Function &_callback,
+      Napi::Number _numberofSnaps)
+      : Napi::AsyncWorker(_callback),
+        ccc(std::make_shared<ThreadSafeCallback>(_callback)),
+        numberofSnaps(_numberofSnaps.Int64Value()),
+        dataRef(Napi::ObjectReference::New(data, 1)),
+        dataPtr(data.Data())
   {
+    mycam.Init();  
+    bufferIndex = 0;  
+    numberOfBuffers = 4;
   }
 
 protected:
   void Execute() override
   {
-    Camera mycam;
+    log("SnapAsyncWorker::Execute enter");
+    //std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
     // The image dimensions
     const auto width = 960;
@@ -81,21 +87,24 @@ protected:
     const auto byteDepth = 4; //RGBA
     const auto bufferSize = width * height * byteDepth;
 
-    mycam.Init();
-    mycam.Snap(dataPtr, bufferSize);
-    std::ostringstream oss;
-    oss << "First pixel: " << (uint32_t)dataPtr[0];
-    log(oss.str());
+    while (cnt <= numberofSnaps)
+    {
+      auto start = chrono::steady_clock::now();
+      mycam.Snap(dataPtr + bufferIndex * bufferSize, bufferSize);
+      auto end = chrono::steady_clock::now();
+      std::ostringstream oss;
+      oss << "Snap took " << chrono::duration_cast<chrono::milliseconds>(end - start).count() << " msec. ";
+      oss << "First pixel: " << (uint32_t)dataPtr[0] << endl;
+      log(oss.str());
+      ccc->call({});
+      bufferIndex = (bufferIndex + 1) % numberOfBuffers;
+      cnt++;
+    }
     mycam.DeInit();
-
-    oss << "First pixel from napi buffer async: " << (uint32_t)dataPtr[0];
-    log(oss.str());
   }
 
   void OnOK() override
   {
-    Napi::Env env = Env();
-
     Callback().Call({});
 
     dataRef.Unref();
@@ -112,10 +121,14 @@ protected:
   }
 
 private:
-  Napi::Env env;
+  std::shared_ptr<ThreadSafeCallback> ccc;
+  int64_t numberofSnaps;
   Napi::ObjectReference dataRef;
   uint8_t *dataPtr;
-  size_t dataLength;
+  int cnt = 0;
+  Camera mycam;
+  int64_t bufferIndex;
+  int64_t numberOfBuffers;
 };
 
 void MethodSnapAsync(const Napi::CallbackInfo &info)
@@ -127,7 +140,7 @@ void MethodSnapAsync(const Napi::CallbackInfo &info)
   // Account for known potential issues that MUST be handled by
   // synchronously throwing an `Error`
   //
-  if (info.Length() != 2)
+  if (info.Length() != 3)
   {
     Napi::TypeError::New(env, "Invalid argument count").ThrowAsJavaScriptException();
     return;
@@ -145,8 +158,9 @@ void MethodSnapAsync(const Napi::CallbackInfo &info)
 
   Napi::Buffer<uint8_t> buffer = info[0].As<Napi::Buffer<uint8_t>>();
   Napi::Function cb = info[1].As<Napi::Function>();
+  auto numberOfSnaps = info[2].As<Napi::Number>();
 
-  (new SnapAsyncWorker(buffer, cb, env))->Queue();
+  (new SnapAsyncWorker(buffer, cb, numberOfSnaps))->Queue();
 
   return;
 }

@@ -40,15 +40,18 @@ describe('addon', function () {
       expect(addon.SnapAsync).to.be.a('function')
     })
 
-    it('should return image buffer', function (done) {
-      let buffer = new Uint8Array(2304000);
+    it('should return image buffer', function () {
+      let bufferSize = 2304000;
+      let numberOfBuffers = 4;
+      let buffer = new Uint8Array(bufferSize * numberOfBuffers);
+      let bufferIndex = 0;
       expect(buffer[0]).to.equal(0);
-      addon.SnapAsync(buffer, function (err) {
-        expect(err).to.not.exist
-        console.log(`***************** ${buffer[0]}`);
-        expect(buffer[0]).to.not.equal(0);
-        done()
-      })
+      addon.SnapAsync(buffer, function (cnt) {
+        // expect(err).to.not.exist
+        console.log(`buffer ${bufferIndex} First pixel value after snap ${buffer[bufferSize * bufferIndex]}`);
+        expect(buffer[bufferSize * bufferIndex]).to.not.equal(0);
+        bufferIndex = (bufferIndex + 1) % numberOfBuffers;
+      }, 10)
     })     
   });
 })
