@@ -4,7 +4,7 @@
             "target_name": "cameraaddon",
             "cflags!": ["-fno-exceptions"],
             "cflags_cc!": ["-fno-exceptions"],
-            "sources": ["cameraaddon.cc"],
+            "sources": ["../../lib/cameraaddon.cc"],
             "include_dirs": [
                 "<!@(node -p \"require('node-addon-api').include\")",
                 "<(module_root_dir)/lib",

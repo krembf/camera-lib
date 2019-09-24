@@ -1,6 +1,6 @@
 #include <fstream>
 #include <napi.h>
-#include "lib/camera.hpp"
+#include "camera.hpp"
 #include <vector>
 #include <sstream>
 #include <thread>
