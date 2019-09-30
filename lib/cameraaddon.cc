@@ -15,7 +15,7 @@ static std::ofstream logFile("logfile.txt", std::ofstream::out);
 
 static void log(std::string text)
 {
-  logFile << text << endl;
+  logFile << "[" << std::this_thread::get_id() << "] " << text << endl;
   logFile.flush();
 }
 
@@ -165,7 +165,7 @@ void MethodSnapAsync(const Napi::CallbackInfo &info)
   return;
 }
 
-class ErrorAsyncWorker : public Napi::AsyncWorker
+class ErrorAsyncWorker : public Napi::AsyncWorker 
 {
 public:
   ErrorAsyncWorker(
@@ -204,6 +204,85 @@ private:
   Napi::Error error;
 };
 
+class SnapAsyncWorkerWithCallback : public Napi::AsyncWorker
+{
+public:
+  SnapAsyncWorkerWithCallback(
+      Napi::Buffer<uint8_t> &data,
+      const Napi::Function &_callback,
+      Napi::Number _numberofSnaps)
+      : Napi::AsyncWorker(_callback),
+        ccc(std::make_shared<ThreadSafeCallback>(_callback)),
+        numberofSnaps(_numberofSnaps.Int64Value()),
+        dataRef(Napi::ObjectReference::New(data, 1)),
+        dataPtr(data.Data())
+  {
+    log("SnapAsyncWorkerWithCallback Constructor enter");
+    mycam.Init();  
+    bufferIndex = 0;
+    numberOfBuffers = 4;
+  }
+
+protected:
+  void Execute() override
+  {
+    log("SnapAsyncWorkerWithCallback::Execute enter");
+
+    // The image dimensions
+    const auto width = 960;
+    const auto height = 600;
+    const auto byteDepth = 4; //RGBA
+    const auto bufferSize = width * height * byteDepth;
+
+    mycam.SnapContinuous(dataPtr, bufferSize,
+      [this]() {
+        log("Lambda Callback Enter");
+        this->ccc->call({});
+        }
+      );
+
+    mycam.DeInit();
+  }
+
+  void OnOK() override
+  {
+    Callback().Call({});
+
+    dataRef.Unref();
+  }
+
+  void OnError(const Napi::Error &e) override
+  {
+    Napi::Env env = Env();
+
+    Callback().MakeCallback(
+        Receiver().Value(),
+        {e.Value(),
+         env.Undefined()});
+  }
+
+private:
+  std::shared_ptr<ThreadSafeCallback> ccc;
+  int64_t numberofSnaps;
+  Napi::ObjectReference dataRef;
+  uint8_t *dataPtr;
+  int cnt = 0;
+  Camera mycam;
+  int64_t bufferIndex;
+  int64_t numberOfBuffers;
+};
+
+void MethodSnapWithCallback(const Napi::CallbackInfo &info)
+{
+  log("MethodSnapWithCallback enter");
+  Napi::Buffer<uint8_t> buffer = info[0].As<Napi::Buffer<uint8_t>>();
+  Napi::Function cb = info[1].As<Napi::Function>();
+  auto numberOfSnaps = info[2].As<Napi::Number>();
+
+  (new SnapAsyncWorkerWithCallback(buffer, cb, numberOfSnaps))->Queue();
+  log("MethodSnapWithCallback Exit");
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports)
 {
   log("Init enter");
@@ -213,6 +292,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports)
               Napi::Function::New(env, MethodSnap));
   exports.Set(Napi::String::New(env, "SnapAsync"),
               Napi::Function::New(env, MethodSnapAsync));
+  exports.Set(Napi::String::New(env, "SnapWithCallback"),
+              Napi::Function::New(env, MethodSnapWithCallback));              
   return exports;
 }
 

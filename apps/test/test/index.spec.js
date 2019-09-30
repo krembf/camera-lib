@@ -54,4 +54,22 @@ describe('addon', function () {
       }, 10)
     })     
   });
+
+  describe('.SnapWithCallback', function () {
+    it('should be a function', function () {
+      expect(addon.SnapWithCallback).to.be.a('function')
+    })
+
+    it('should return image buffer', function () {
+      let bufferSize = 2304000;
+      let numberOfBuffers = 1;
+      let buffer = new Uint8Array(bufferSize * numberOfBuffers);      
+      expect(buffer[0]).to.equal(0);
+      addon.SnapWithCallback(buffer, function () {
+        console.log(`First pixel value after snap ${buffer[0]}`);
+        expect(buffer[0]).to.not.equal(0);
+      }, 100)
+      expect(buffer.length).to.equal(2304000)
+    })
+  });  
 })

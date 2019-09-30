@@ -9,11 +9,16 @@ var snap = function () {
 }
 
 var snapAsync = function (buffer, cb) {
-  return addon.snapAsync(buffer, cb, 200)
+  return addon.SnapAsync(buffer, cb, 200)
+}
+
+var snapWithCallback = function (buffer, cb) {
+  return addon.SnapWithCallback(buffer, cb, 200)
 }
 
 export default {
   getCameraName,
   snap,
-  snapAsync
+  snapAsync,
+  snapWithCallback
 }

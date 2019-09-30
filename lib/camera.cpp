@@ -1,4 +1,5 @@
 #include <fstream>
+#include <thread>
 #include "camera.hpp"
 
 //Include files to use the pylon API.
@@ -63,7 +64,7 @@ void Camera::Snap(uint8_t *buffer, uint32_t bufferSize)
 	const auto width = 960;
 	const auto height = 600;
 	const auto byteDepth = 4; //RGBA
-  	const auto expectedBufferSize = width * height * byteDepth;
+	const auto expectedBufferSize = width * height * byteDepth;
 
 	try
 	{
@@ -80,7 +81,7 @@ void Camera::Snap(uint8_t *buffer, uint32_t bufferSize)
 	}
 
 	// validate image buffer size against camera image dimensions and byteDepth;
-	if(bufferSize != expectedBufferSize)
+	if (bufferSize != expectedBufferSize)
 	{
 		cerr << "Could not grab an image: Invalid buffer size supplied " << buffer << " " << expectedBufferSize << endl;
 		log("Exception occured");
@@ -132,6 +133,104 @@ void Camera::Snap(uint8_t *buffer, uint32_t bufferSize)
 		// for debug only at this point
 		// userImage.Save(EImageFileFormat::ImageFileFormat_Png, "/tmp/mypng.png");
 
+		return;
+	}
+}
+
+// Number of images to be grabbed.
+static const uint32_t c_countOfImagesToGrab = 1000;
+
+void Camera::SnapContinuous(uint8_t *buffer, uint32_t bufferSize, std::function<void()> cb)
+{
+	// This smart pointer will receive the grab result data.
+	CGrabResultPtr ptrGrabResult;
+
+	const auto width = 960;
+	const auto height = 600;
+	const auto byteDepth = 4; //RGBA
+	const auto expectedBufferSize = width * height * byteDepth;
+	const auto numberOfBuffers = 4;
+	auto bufferIndex = 0;
+	auto skipIndex = 0;
+
+	try
+	{
+		CInstantCamera camera(CTlFactory::GetInstance().CreateFirstDevice());
+		camera.StartGrabbing(c_countOfImagesToGrab);
+
+		while (camera.IsGrabbing())
+		{
+			// Wait for an image and then retrieve it. A timeout of 5000 ms is used.
+			camera.RetrieveResult(5000, ptrGrabResult, TimeoutHandling_ThrowException);
+
+			if(skipIndex++ %3 != 0)
+			{
+				continue;
+			}
+
+			// validate image buffer size against camera image dimensions and byteDepth;
+			if (bufferSize != expectedBufferSize)
+			{
+				cerr << "Could not grab an image: Invalid buffer size supplied " << buffer << " " << expectedBufferSize << endl;
+				log("Exception occured");
+				return;
+			}
+
+			if (ptrGrabResult && ptrGrabResult->GrabSucceeded())
+			{
+				// Create a pylon image.
+				CPylonImage image;
+				CPylonImage userImage;
+				// todo: get the parameters as function arguments
+				cout << "Attaching user buffer at index " << bufferIndex << endl;
+				userImage.AttachUserBuffer(buffer + bufferIndex * bufferSize, bufferSize, Pylon::EPixelType::PixelType_BGRA8packed, width, height, 0);
+				Pylon::CImageFormatConverter converter;
+				converter.OutputPixelFormat = PixelType_BGRA8packed;
+				converter.OutputBitAlignment = OutputBitAlignment_MsbAligned;
+				cout << "Converter created ...";
+
+				// A pylon grab result class CGrabResultPtr provides a cast operator to IImage.
+				// That's why it can be used like an image, e.g. to print its properties or
+				// to show it on the screen.
+				std::cout << endl
+						  << "The properties of the grabbed image." << endl;
+				PrintImageProperties(ptrGrabResult);
+
+				// Initializes the image object with the buffer from the grab result.
+				// This prevents the reuse of the buffer for grabbing as long as it is
+				// not released.
+				// Please note that this is not relevant for this example because the
+				// camera object has been destroyed already.
+				image.AttachGrabResultBuffer(ptrGrabResult);
+				std::cout << endl
+						  << "The properties of an image with an attached grab result." << endl;
+				PrintImageProperties(image);
+
+				// Now the grab result can be released. The grab result buffer is now
+				// only held by the pylon image.
+				ptrGrabResult.Release();
+				std::cout << "After the grab result has been released." << endl;
+				PrintImageProperties(image);
+
+				uint8_t *pImageBuffer = (uint8_t *)image.GetBuffer();
+				cout << "Gray value of first pixel: " << (uint32_t)pImageBuffer[0] << endl
+					 << endl;
+
+				// Copy the image from the grabbed into user one
+				converter.Convert(userImage, image);
+
+				cb();
+				bufferIndex = (bufferIndex + 1) % numberOfBuffers;
+				// std::this_thread::sleep_for(std::chrono::milliseconds(150));
+			}
+		}
+	}
+	catch (const GenericException &e)
+	{
+		cerr << "Could not grab an image: " << endl
+			 << e.GetDescription() << endl;
+		log("Exception occured");
+		log(e.GetDescription());
 		return;
 	}
 }

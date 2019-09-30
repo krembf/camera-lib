@@ -64,30 +64,29 @@ export default {
       let numberOfBuffers = 4
       let buffer = new Uint8Array(bufferSize * numberOfBuffers)
       let bufferIndex = 0
-      Camera.snapAsync(buffer, function () {
+      // main canvas
+      let canvas = document.querySelector('canvas')
+      let ctx = canvas.getContext('2d', { alpha: false })
+      // buffer canvas
+      let canvas2 = document.createElement('canvas')
+      canvas2.width = 960
+      canvas2.height = 600
+      let context2 = canvas2.getContext('2d', { alpha: false })
+      let imgData = context2.createImageData(960, 600)
+      Camera.snapWithCallback(buffer, function () {
         console.log('### Got new buffer')
-        var canvas = document.querySelector('canvas')
-        var ctx = canvas.getContext('2d')
-
-        // buffer canvas
-        let canvas2 = document.createElement('canvas')
-        canvas2.width = 960
-        canvas2.height = 600
-        let context2 = canvas2.getContext('2d')
-
         // create something on the canvas
-        let imgData = context2.createImageData(960, 600)
         let j = 0
         var start = Date.now()
         buffer.subarray(bufferIndex * bufferSize, bufferIndex * bufferSize + bufferSize).forEach(element => {
           imgData.data[j] = element
           j++
         })
-        console.log(`Copy took ${Date.now() - start} millis`)
         context2.putImageData(imgData, 0, 0)
         // render the buffered canvas onto the original canvas element
         ctx.drawImage(canvas2, 0, 0)
         bufferIndex = (bufferIndex + 1) % numberOfBuffers
+        console.log(`Render took ${Date.now() - start} millis`)
       })
     }
   }
