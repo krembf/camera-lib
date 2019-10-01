@@ -163,6 +163,9 @@ void Camera::SnapContinuous(uint8_t *buffer, uint32_t bufferSize, std::function<
 			// Wait for an image and then retrieve it. A timeout of 5000 ms is used.
 			camera.RetrieveResult(5000, ptrGrabResult, TimeoutHandling_ThrowException);
 
+			// Currently skipping 2/3 of the images because UI cannot keep up with the 
+			// buffer updates, so needs some optimization on the rendering part in order
+			// to remove this restriction and deliver as much images as possible.
 			if(skipIndex++ %3 != 0)
 			{
 				continue;

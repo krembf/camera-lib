@@ -19,8 +19,6 @@ static void log(std::string text)
   logFile.flush();
 }
 
-static Napi::Buffer<uint8_t> napiBuffer;
-
 Napi::String MethodGetCameraName(const Napi::CallbackInfo &info)
 {
   Napi::Env env = info.Env();
