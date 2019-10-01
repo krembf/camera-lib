@@ -65,7 +65,7 @@ public:
       const Napi::Function &_callback,
       Napi::Number _numberofSnaps)
       : Napi::AsyncWorker(_callback),
-        ccc(std::make_shared<ThreadSafeCallback>(_callback)),
+        threadSafeCallback(std::make_shared<ThreadSafeCallback>(_callback)),
         numberofSnaps(_numberofSnaps.Int64Value()),
         dataRef(Napi::ObjectReference::New(data, 1)),
         dataPtr(data.Data())
@@ -96,7 +96,7 @@ protected:
       oss << "Snap took " << chrono::duration_cast<chrono::milliseconds>(end - start).count() << " msec. ";
       oss << "First pixel: " << (uint32_t)dataPtr[0] << endl;
       log(oss.str());
-      ccc->call({});
+      threadSafeCallback->call({});
       bufferIndex = (bufferIndex + 1) % numberOfBuffers;
       cnt++;
     }
@@ -121,7 +121,7 @@ protected:
   }
 
 private:
-  std::shared_ptr<ThreadSafeCallback> ccc;
+  std::shared_ptr<ThreadSafeCallback> threadSafeCallback;
   int64_t numberofSnaps;
   Napi::ObjectReference dataRef;
   uint8_t *dataPtr;
@@ -212,7 +212,7 @@ public:
       const Napi::Function &_callback,
       Napi::Number _numberofSnaps)
       : Napi::AsyncWorker(_callback),
-        ccc(std::make_shared<ThreadSafeCallback>(_callback)),
+        threadSafeCallback(std::make_shared<ThreadSafeCallback>(_callback)),
         numberofSnaps(_numberofSnaps.Int64Value()),
         dataRef(Napi::ObjectReference::New(data, 1)),
         dataPtr(data.Data())
@@ -237,7 +237,7 @@ protected:
     mycam.SnapContinuous(dataPtr, bufferSize,
       [this]() {
         log("Lambda Callback Enter");
-        this->ccc->call({});
+        this->threadSafeCallback->call({});
         }
       );
 
@@ -262,7 +262,7 @@ protected:
   }
 
 private:
-  std::shared_ptr<ThreadSafeCallback> ccc;
+  std::shared_ptr<ThreadSafeCallback> threadSafeCallback;
   int64_t numberofSnaps;
   Napi::ObjectReference dataRef;
   uint8_t *dataPtr;
