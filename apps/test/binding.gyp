@@ -11,8 +11,11 @@
                 "<!@(node -p \"require('napi-thread-safe-callback').include\")"
             ],
             "libraries": [
-                '-Wl,-rpath,/home/home-dev/Documents/dev/bluedragon/camera-lib/lib/build/out/Default/obj.target',
-                '-L/home/home-dev/Documents/dev/bluedragon/camera-lib/lib//build/out/Default/obj.target',
+                # -L is for linkage time location of the library
+                "-L<(module_root_dir)/../../lib/build/out/Default/obj.target",
+                # -Wl is for run time location of the library. TODO is to figure out 
+                # the target location when making release
+                "-Wl,-rpath,<(module_root_dir)/../../lib/build/out/Default/obj.target",
                 '-lcamera', # full name is libcamera.so, linker knows how to translate
                 '<!@(/opt/pylon5/bin/pylon-config --libs-rpath)',
                 '<!@(/opt/pylon5/bin/pylon-config --libs)',
