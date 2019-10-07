@@ -12,8 +12,13 @@ var snapAsync = function (buffer, cb) {
   return addon.SnapAsync(buffer, cb, 200)
 }
 
-var snapWithCallback = function (buffer, cb) {
-  return addon.SnapWithCallback(buffer, cb, 200)
+var snapWithCallback = function (cammeraSettings, buffer, cb) {
+  let wrappedCameraSettings = new addon.WrappedCameraSettings()
+  wrappedCameraSettings.value = 42
+  wrappedCameraSettings.imageWidth = cammeraSettings.imageWidth
+  wrappedCameraSettings.imageHeight = cammeraSettings.imageHeight
+  wrappedCameraSettings.byteDepth = cammeraSettings.byteDepth
+  return addon.SnapWithCallback(buffer, cb, 200, wrappedCameraSettings)
 }
 
 export default {

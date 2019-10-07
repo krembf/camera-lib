@@ -5,7 +5,7 @@
             'conditions': [
                 ['OS=="linux"', {
                     'cflags': [
-                        '-fPIC',
+                        '-fPIC'
                     ]
                 }]
             ],

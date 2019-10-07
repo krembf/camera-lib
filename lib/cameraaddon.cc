@@ -206,10 +206,12 @@ class SnapAsyncWorkerWithCallback : public Napi::AsyncWorker
 {
 public:
   SnapAsyncWorkerWithCallback(
+      CameraSettings cameraSettings,
       Napi::Buffer<uint8_t> &data,
       const Napi::Function &_callback,
       Napi::Number _numberofSnaps)
       : Napi::AsyncWorker(_callback),
+        _cameraSettings(cameraSettings),
         threadSafeCallback(std::make_shared<ThreadSafeCallback>(_callback)),
         numberofSnaps(_numberofSnaps.Int64Value()),
         dataRef(Napi::ObjectReference::New(data, 1)),
@@ -227,12 +229,12 @@ protected:
     log("SnapAsyncWorkerWithCallback::Execute enter");
 
     // The image dimensions
-    const auto width = 960;
-    const auto height = 600;
-    const auto byteDepth = 4; //RGBA
+    const auto width = _cameraSettings.ImageWidth;
+    const auto height = _cameraSettings.ImageHeight;
+    const auto byteDepth = _cameraSettings.ByteDepth; //RGBA
     const auto bufferSize = width * height * byteDepth;
 
-    mycam.SnapContinuous(dataPtr, bufferSize,
+    mycam.SnapContinuous(_cameraSettings, dataPtr, bufferSize,
       [this]() {
         log("Lambda Callback Enter");
         this->threadSafeCallback->call({});
@@ -260,15 +262,109 @@ protected:
   }
 
 private:
+  CameraSettings _cameraSettings; 
   std::shared_ptr<ThreadSafeCallback> threadSafeCallback;
   int64_t numberofSnaps;
   Napi::ObjectReference dataRef;
   uint8_t *dataPtr;
   int cnt = 0;
-  Camera mycam;
+  Camera mycam; 
   int64_t bufferIndex;
   int64_t numberOfBuffers;
 };
+
+class WrappedCameraSettings : public Napi::ObjectWrap<WrappedCameraSettings>
+{
+public:
+  Napi::Value GetValue(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+    return Napi::Number::New(env, this->_value);
+  }
+
+  void SetValue(const Napi::CallbackInfo& info, const Napi::Value& value)
+  {
+    // Napi::Env env = info.Env();
+    // ...
+    this->_value = static_cast<double>(value.ToNumber());
+  }
+
+  Napi::Value GetImageWidth(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+    return Napi::Number::New(env, this->_imageWidth);
+  }
+
+  void SetImageWidth(const Napi::CallbackInfo& info, const Napi::Value& value)
+  {
+    this->_imageWidth = static_cast<int>(value.ToNumber());
+  }  
+
+  Napi::Value GetImageHeight(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+    return Napi::Number::New(env, this->_imageHeight);
+  }
+
+  void SetImageHeight(const Napi::CallbackInfo& info, const Napi::Value& value)
+  {
+    this->_imageHeight = static_cast<int>(value.ToNumber());
+  }   
+
+  Napi::Value GetByteDepth(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+    return Napi::Number::New(env, this->_byteDepth);
+  }
+
+  void SetByteDepth(const Napi::CallbackInfo& info, const Napi::Value& value)
+  {
+    this->_byteDepth = static_cast<int>(value.ToNumber());
+  }     
+
+  camerautils::CameraSettings ToCameraSetings()
+  {
+    camerautils::CameraSettings cameraSettings;
+    cameraSettings.ImageWidth = _imageWidth;
+    cameraSettings.ImageHeight = _imageHeight;
+    cameraSettings.ByteDepth = _byteDepth;
+    return cameraSettings;
+  }
+
+  static Napi::Object Init(Napi::Env env, Napi::Object exports)
+  {
+    Napi::Function func = DefineClass(env, "WrappedCameraSettings", {
+      InstanceAccessor("value", &WrappedCameraSettings::GetValue, &WrappedCameraSettings::SetValue),
+      InstanceAccessor("imageWidth", &WrappedCameraSettings::GetImageWidth, &WrappedCameraSettings::SetImageWidth),
+      InstanceAccessor("imageHeight", &WrappedCameraSettings::GetImageHeight, &WrappedCameraSettings::SetImageHeight),
+      InstanceAccessor("byteDepth", &WrappedCameraSettings::GetByteDepth, &WrappedCameraSettings::SetByteDepth)
+    }, nullptr);
+
+    constructor = Napi::Persistent(func);
+    constructor.SuppressDestruct();
+    exports.Set("WrappedCameraSettings", func);
+
+    return exports;
+  }
+
+  WrappedCameraSettings(const Napi::CallbackInfo &info): Napi::ObjectWrap<WrappedCameraSettings>(info)
+  {
+    // Napi::Env env = info.Env();
+    // ...
+    // Napi::Number value = info[0].As<Napi::Number>();
+    // this->_value = value.DoubleValue();
+  }
+
+private:
+  static Napi::FunctionReference constructor;
+  double _value;
+  int _imageWidth;
+  int _imageHeight;
+  int _byteDepth;
+};
+
+Napi::FunctionReference WrappedCameraSettings::constructor;
+
 
 void MethodSnapWithCallback(const Napi::CallbackInfo &info)
 {
@@ -276,11 +372,18 @@ void MethodSnapWithCallback(const Napi::CallbackInfo &info)
   Napi::Buffer<uint8_t> buffer = info[0].As<Napi::Buffer<uint8_t>>();
   Napi::Function cb = info[1].As<Napi::Function>();
   auto numberOfSnaps = info[2].As<Napi::Number>();
+  WrappedCameraSettings *cs = Napi::ObjectWrap<WrappedCameraSettings>::Unwrap(info[3].As<Napi::Object>());
 
-  (new SnapAsyncWorkerWithCallback(buffer, cb, numberOfSnaps))->Queue();
+  std::ostringstream oss;
+  oss << "Got camera setting " << (double) cs->GetValue(info).As<Napi::Number>();
+  oss << "Got camera width " << (int) cs->GetImageWidth(info).As<Napi::Number>();
+  log(oss.str());
+
+  (new SnapAsyncWorkerWithCallback(cs->ToCameraSetings(), buffer, cb, numberOfSnaps))->Queue();
   log("MethodSnapWithCallback Exit");
 }
 
+// Initialize native add-on
 Napi::Object Init(Napi::Env env, Napi::Object exports)
 {
   log("Init enter");
@@ -291,7 +394,10 @@ Napi::Object Init(Napi::Env env, Napi::Object exports)
   exports.Set(Napi::String::New(env, "SnapAsync"),
               Napi::Function::New(env, MethodSnapAsync));
   exports.Set(Napi::String::New(env, "SnapWithCallback"),
-              Napi::Function::New(env, MethodSnapWithCallback));              
+              Napi::Function::New(env, MethodSnapWithCallback));  
+
+  WrappedCameraSettings::Init(env, exports);
+
   return exports;
 }
 

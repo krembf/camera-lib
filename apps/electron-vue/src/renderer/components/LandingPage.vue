@@ -4,7 +4,7 @@
     <main>
       <div class="left-side">
         <span class="title">Welcome to your new project!</span>
-        <canvas id="canvas" width="960" height="600"></canvas>
+        <canvas id="canvas" :width=this.cameraSettings.imageWidth :height="cameraSettings.imageHeight"></canvas>
       </div>
 
       <div class="right-side">
@@ -40,6 +40,13 @@ import Camera from '../store/modules/Camera'
 export default {
   name: 'landing-page',
   components: { SystemInformation },
+  data: {
+    cameraSettings: {
+      imageWidth: 720,
+      imageHeight: 450,
+      byteDepth: 4
+    }
+  },
   methods: {
     open (link) {
       this.$electron.shell.openExternal(link)
@@ -60,7 +67,7 @@ export default {
       ctx.putImageData(imgData, 0, 0)
     },
     snapAsync () {
-      let bufferSize = 2304000
+      let bufferSize = this.cameraSettings.imageWidth * this.cameraSettings.imageHeight * this.cameraSettings.byteDepth
       let numberOfBuffers = 4
       let buffer = new Uint8Array(bufferSize * numberOfBuffers)
       let bufferIndex = 0
@@ -69,11 +76,11 @@ export default {
       let ctx = canvas.getContext('2d', { alpha: false })
       // buffer canvas
       let canvas2 = document.createElement('canvas')
-      canvas2.width = 960
-      canvas2.height = 600
+      canvas2.width = this.cameraSettings.imageWidth
+      canvas2.height = this.cameraSettings.imageHeight
       let context2 = canvas2.getContext('2d', { alpha: false })
-      let imgData = context2.createImageData(960, 600)
-      Camera.snapWithCallback(buffer, function () {
+      let imgData = context2.createImageData(canvas2.width, canvas2.height)
+      Camera.snapWithCallback(this.cameraSettings, buffer, function () {
         console.log('### Got new buffer')
         // create something on the canvas
         let j = 0

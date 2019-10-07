@@ -140,14 +140,14 @@ void Camera::Snap(uint8_t *buffer, uint32_t bufferSize)
 // Number of images to be grabbed.
 static const uint32_t c_countOfImagesToGrab = 1000;
 
-void Camera::SnapContinuous(uint8_t *buffer, uint32_t bufferSize, std::function<void()> cb)
+void Camera::SnapContinuous(CameraSettings cameraSettings, uint8_t *buffer, uint32_t bufferSize, std::function<void()> cb)
 {
 	// This smart pointer will receive the grab result data.
 	CGrabResultPtr ptrGrabResult;
 
-	const auto width = 960;
-	const auto height = 600;
-	const auto byteDepth = 4; //RGBA
+	const auto width = cameraSettings.ImageWidth;
+	const auto height = cameraSettings.ImageHeight;
+	const auto byteDepth = cameraSettings.ByteDepth; //RGBA
 	const auto expectedBufferSize = width * height * byteDepth;
 	const auto numberOfBuffers = 4;
 	auto bufferIndex = 0;
@@ -156,6 +156,11 @@ void Camera::SnapContinuous(uint8_t *buffer, uint32_t bufferSize, std::function<
 	try
 	{
 		CInstantCamera camera(CTlFactory::GetInstance().CreateFirstDevice());
+		camera.Open();
+		CIntegerParameter camwidth(camera.GetNodeMap(), "Width");
+		camwidth.SetValue(width);
+		CIntegerParameter camheight(camera.GetNodeMap(), "Height");
+		camheight.SetValue(height);		
 		camera.StartGrabbing(c_countOfImagesToGrab);
 
 		while (camera.IsGrabbing())
@@ -166,10 +171,10 @@ void Camera::SnapContinuous(uint8_t *buffer, uint32_t bufferSize, std::function<
 			// Currently skipping 2/3 of the images because UI cannot keep up with the 
 			// buffer updates, so needs some optimization on the rendering part in order
 			// to remove this restriction and deliver as much images as possible.
-			if(skipIndex++ %3 != 0)
-			{
-				continue;
-			}
+			// if(skipIndex++ %3 != 0)
+			// {
+			// 	continue;
+			// }
 
 			// validate image buffer size against camera image dimensions and byteDepth;
 			if (bufferSize != expectedBufferSize)
